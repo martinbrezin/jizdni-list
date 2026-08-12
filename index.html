@@ -1,1 +1,157 @@
-{\rtf1}
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Digitální Jízdní List v12</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e293b">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { -webkit-tap-highlight-color: transparent; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .marquee-container { overflow: hidden; white-space: nowrap; display: flex; align-items: center; width: 100%; }
+        .marquee-text { display: inline-block; padding-right: 40px; animation: marquee 8s linear infinite; }
+        .screenshot-mode .marquee-text { animation: none !important; }
+        @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-50%, 0, 0); } }
+        .dragging { opacity: 0.4; background-color: #334155 !important; }
+        .screenshot-mode .no-capture { display: none !important; }
+        .details-pane { max-height: 0; overflow: hidden; transition: max-height 0.2s ease-out; }
+        .details-expanded .details-pane { max-height: 200px; transition: max-height 0.25s ease-in; }
+    </style>
+</head>
+<body id="appBody" class="bg-[#0f172a] text-slate-100 min-h-screen pb-36 transition-colors duration-200">
+
+    <div id="captureArea" class="p-2 max-w-md mx-auto space-y-2 bg-[#0f172a]">
+
+        <!-- Hlavní horní panel -->
+        <div id="navPanel" class="bg-[#1e293b] border border-[#334155] rounded-xl p-3 shadow-xl transition-colors duration-200">
+            <div class="flex items-center justify-between gap-2">
+                <div>
+                    <h1 id="mainTitle" class="text-base font-black tracking-tight text-white flex items-center gap-1.5">
+                        <span>📋 Jízdní List</span>
+                        <button onclick="toggleTheme()" class="text-xs bg-[#334155] border border-[#475569] px-1.5 py-0.5 rounded-md active:scale-95 no-capture">🌓</button>
+                    </h1>
+                </div>
+                
+                <!-- Globální dnešní počítadla -->
+                <div class="flex gap-1 font-mono text-[11px]">
+                    <div class="bg-[#022c22] border border-[#065f46] px-2 py-0.5 rounded-lg text-center min-w-[50px]">
+                        <span class="block text-[8px] text-[#34d399] font-bold uppercase">Tam</span>
+                        <span id="globalTotalTam" class="font-black text-[#34d399] text-xs">0</span>
+                    </div>
+                    <div class="bg-[#1e1b4b] border border-[#3730a3] px-2 py-0.5 rounded-lg text-center min-w-[50px]">
+                        <span class="block text-[8px] text-[#818cf8] font-bold uppercase">Zpět</span>
+                        <span id="globalTotalZpet" class="font-black text-[#818cf8] text-xs">0</span>
+                    </div>
+                    <div class="bg-[#451a03] border border-[#9a3412] px-2 py-0.5 rounded-lg text-center min-w-[75px]">
+                        <span class="block text-[8px] text-[#fbbf24] font-bold uppercase">Kč Dnes</span>
+                        <span id="globalTotalPenize" class="font-black text-[#fbbf24] text-xs">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-2 no-capture">
+                <button onclick="toggleFormCollapse()" id="collapseBtn" class="w-full py-1 bg-[#334155] hover:bg-[#475569] text-[10px] text-slate-300 font-bold rounded-md border border-[#475569] transition active:scale-[0.99]">
+                    🔼 Schovat formulář jízdy
+                </button>
+            </div>
+
+            <!-- Formulář jízdy -->
+            <div id="collapsibleForm" class="grid grid-cols-2 gap-2 text-xs border-t border-[#334155] mt-2 pt-2">
+                <div class="col-span-2">
+                    <label class="block text-slate-400 font-semibold mb-0.5 text-[10px]">Jméno řidiče</label>
+                    <input type="text" id="formJmeno" placeholder="Zadej své jméno..." class="w-full bg-[#0f172a] border border-[#334155] rounded p-1.5 focus:outline-none text-white placeholder-slate-600">
+                </div>
+                <div>
+                    <label class="block text-slate-400 font-semibold mb-0.5 text-[10px]">Datum</label>
+                    <input type="text" id="formDatum" class="w-full bg-[#0f172a] border border-[#334155] rounded p-1.5 focus:outline-none text-white text-center">
+                </div>
+                <div>
+                    <label class="block text-slate-400 font-semibold mb-0.5 text-[10px]">SPZ vozidla</label>
+                    <input type="text" id="formSpz" placeholder="Např. 1A2B345" class="w-full bg-[#0f172a] border border-[#334155] rounded p-1.5 focus:outline-none text-white uppercase placeholder-slate-600 text-center">
+                </div>
+                <div>
+                    <label class="block text-slate-400 font-semibold mb-0.5 text-[10px]">Čas odjezdu</label>
+                    <input type="time" id="formOdjezd" class="w-full bg-[#0f172a] border border-[#334155] rounded p-1.5 focus:outline-none text-white text-center">
+                </div>
+                <div>
+                    <label class="block text-slate-400 font-semibold mb-0.5 text-[10px]">Čas příjezdu</label>
+                    <input type="time" id="formPrijezd" class="w-full bg-[#0f172a] border border-[#334155] rounded p-1.5 focus:outline-none text-white text-center">
+                </div>
+                <div>
+                    <label class="block text-slate-400 font-semibold mb-0.5 text-[10px]">Tachometr ZAČÁTEK</label>
+                    <input type="number" id="formKmStart" placeholder="0" class="w-full bg-[#0f172a] border border-[#334155] rounded p-1.5 focus:outline-none text-white text-center placeholder-slate-700">
+                </div>
+                <div>
+                    <label class="block text-slate-400 font-semibold mb-0.5 text-[10px]">Tachometr KONEC</label>
+                    <input type="number" id="formKmEnd" placeholder="0" class="w-full bg-[#0f172a] border border-[#334155] rounded p-1.5 focus:outline-none text-white text-center placeholder-slate-700">
+                </div>
+                <div class="col-span-2 text-right pt-0.5">
+                    <span class="text-[10px] uppercase font-bold text-slate-400">Celkem ujeto: </span>
+                    <span id="calculatedKm" class="font-mono font-black text-emerald-400 text-sm">0 km</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ovládací lišta tlačítek -->
+        <div class="grid grid-cols-3 gap-1 text-[11px] font-bold no-capture">
+            <button onclick="toggleFilter()" id="filterBtn" class="py-2 px-1 bg-[#1e293b] border border-[#334155] rounded-xl text-slate-300 active:scale-95 transition text-center truncate">
+                👁️ Jen aktivní
+            </button>
+            <button onclick="toggleScreenshotMode()" id="screenshotBtn" class="py-2 px-1 bg-[#059669] text-white border border-[#059669] rounded-xl active:scale-95 transition text-center flex items-center justify-center gap-1">
+                📸 Režim focení
+            </button>
+            <button onclick="archiveAndResetDay()" class="py-2 px-1 bg-[#4f46e5] border border-[#6366f1] text-indigo-100 rounded-xl active:scale-95 transition text-center flex flex-col items-center justify-center leading-tight">
+                <span>💾 Uzavřít den</span>
+                <span class="text-[8px] font-normal opacity-80">do archivu</span>
+            </button>
+        </div>
+
+        <button id="exitScreenshotBtn" onclick="toggleScreenshotMode()" class="hidden fixed bottom-6 right-6 z-50 bg-[#dc2626] border border-[#ef4444] text-white text-xs font-black px-4 py-3 rounded-full shadow-2xl active:scale-95">
+            ❌ Ukončit režim focení
+        </button>
+
+        <p id="tipText" class="text-[9px] text-slate-500 px-1 italic no-capture">Ťuknutím na název pobočky zobrazíš kontakt, mapu a otevíračku.</p>
+
+        <!-- Seznam provozoven -->
+        <div id="rowsContainer" class="space-y-1"></div>
+
+        <!-- Přidání provozovny -->
+        <div id="customBox" class="bg-[#1e293b] border border-[#334155] p-2.5 rounded-xl space-y-1.5 mt-3 no-capture">
+            <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">➕ Přidat chybějící pobočku</h3>
+            <div class="flex gap-1.5">
+                <input type="text" id="customNameInput" placeholder="Název podniku..." class="flex-1 bg-[#0f172a] border border-[#334155] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none">
+                <button onclick="addCustomRow()" class="bg-[#475569] text-white px-3 py-1.5 rounded-lg text-xs font-bold active:scale-95 transition">Přidat</button>
+            </div>
+        </div>
+
+        <!-- Sekce Poznámky -->
+        <div id="notesBox" class="bg-[#1e293b] border border-[#334155] p-3 rounded-xl space-y-1.5 mt-2">
+            <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">📝 Poznámky / Vrácené zboží</h3>
+            <textarea id="formNotes" rows="2" placeholder="Zde zapiš reklamace, nesrovnalosti..." class="w-full bg-[#0f172a] border border-[#334155] rounded-lg p-2 text-xs text-white placeholder-slate-600 focus:outline-none resize-none"></textarea>
+        </div>
+
+        <!-- Měsíční archiv -->
+        <div id="archiveBox" class="bg-[#1e293b] border border-[#334155] p-3 rounded-xl space-y-2 mt-2 no-capture">
+            <div class="flex justify-between items-center border-b border-[#334155] pb-1.5">
+                <h3 class="text-[10px] font-bold text-indigo-400 uppercase tracking-wide">📊 Celkový měsíční přehled</h3>
+                <button onclick="resetMonthlyArchive()" class="text-[8px] bg-red-950/40 border border-red-900 text-red-400 px-1.5 py-0.5 rounded hover:bg-red-900 hover:text-white transition">Vynulovat měsíc</button>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center font-mono text-xs">
+                <div class="bg-[#0f172a] p-1.5 rounded-lg border border-[#334155]">
+                    <span class="block text-[8px] text-slate-500 uppercase font-sans">Tam (Měsíc)</span>
+                    <span id="archiveTotalTam" class="font-black text-emerald-400">0</span>
+                </div>
+                <div class="bg-[#0f172a] p-1.5 rounded-lg border border-[#334155]">
+                    <span class="block text-[8px] text-slate-500 uppercase font-sans">Zpět (Měsíc)</span>
+                    <span id="archiveTotalZpet" class="font-black text-indigo-400">0</span>
+                </div>
+                <div class="bg-[#0f172a] p-1.5 rounded-lg border border-[#334155]">
+                    <span class="block text-[8px] text-slate-500 uppercase font-sans">Kč (Měsíc)</span>
+                    <span id="archiveTotalPenize" class="font-black text-amber-400">0</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
