@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Digitální Jízdní List v14</title>
+    <title>Digitální Jízdní List v15</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1e293b">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { -webkit-tap-highlight-color: transparent; }
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        .screenshot-mode .no-capture { display: none !important; }
         .details-pane { max-height: 0; overflow: hidden; transition: max-height 0.2s ease-out; }
         .details-expanded .details-pane { max-height: 250px; transition: max-height 0.25s ease-in; }
         
@@ -33,7 +32,7 @@
                 <div>
                     <h1 id="mainTitle" class="text-base font-black tracking-tight text-white flex items-center gap-1.5">
                         <span>📋 Jízdní List</span>
-                        <button onclick="toggleTheme()" class="text-xs bg-[#334155] border border-[#475569] px-1.5 py-0.5 rounded-md active:scale-95 no-capture">🌓</button>
+                        <button onclick="toggleTheme()" class="text-xs bg-[#334155] border border-[#475569] px-1.5 py-0.5 rounded-md active:scale-95">🌓</button>
                     </h1>
                 </div>
                 
@@ -53,7 +52,7 @@
                 </div>
             </div>
 
-            <div class="mt-2 no-capture">
+            <div class="mt-2">
                 <button onclick="toggleFormCollapse()" id="collapseBtn" class="w-full py-1 bg-[#334155] hover:bg-[#475569] text-[10px] text-slate-300 font-bold rounded-md border border-[#475569] transition active:scale-[0.99]">
                     🔼 Schovat formulář jízdy
                 </button>
@@ -111,8 +110,8 @@
             </div>
         </div>
         
-        <!-- NOVÁ TLAČÍTKA PRO ODESLÁNÍ (WhatsApp & E-mail) -->
-        <div class="grid grid-cols-2 gap-1 text-xs font-bold no-capture">
+        <!-- TLAČÍTKA PRO ODESLÁNÍ (WhatsApp & E-mail) -->
+        <div class="grid grid-cols-2 gap-1.5 text-xs font-bold">
             <button onclick="shareViaWhatsApp()" class="py-2.5 px-2 bg-[#16a34a] hover:bg-[#15803d] text-white rounded-xl active:scale-95 transition text-center flex items-center justify-center gap-1.5 shadow-lg">
                 <span>💬 WhatsApp</span>
             </button>
@@ -121,13 +120,10 @@
             </button>
         </div>
 
-        <!-- Hlavní akční tlačítka -->
-        <div class="grid grid-cols-3 gap-1 text-[11px] font-bold no-capture">
+        <!-- Akční tlačítka -->
+        <div class="grid grid-cols-2 gap-1.5 text-[11px] font-bold">
             <button onclick="toggleFilter()" id="filterBtn" class="py-2 px-1 bg-[#1e293b] border border-[#334155] rounded-xl text-slate-300 active:scale-95 transition text-center truncate">
                 👁️ Jen aktivní
-            </button>
-            <button onclick="toggleScreenshotMode()" id="screenshotBtn" class="py-2 px-1 bg-[#059669] text-white border border-[#059669] rounded-xl active:scale-95 transition text-center flex items-center justify-center gap-1">
-                📸 Foto režim
             </button>
             <button onclick="archiveAndResetDay()" class="py-2 px-1 bg-[#4f46e5] border border-[#6366f1] text-indigo-100 rounded-xl active:scale-95 transition text-center flex flex-col items-center justify-center leading-tight">
                 <span>💾 Uzavřít den</span>
@@ -135,15 +131,11 @@
             </button>
         </div>
 
-        <button id="exitScreenshotBtn" onclick="toggleScreenshotMode()" class="hidden fixed bottom-6 right-6 z-50 bg-[#dc2626] border border-[#ef4444] text-white text-xs font-black px-4 py-3 rounded-full shadow-2xl active:scale-95">
-            ❌ Ukončit režim focení
-        </button>
-
         <!-- Seznam poboček -->
         <div id="rowsContainer" class="space-y-1"></div>
 
         <!-- Přidat novou pobočku -->
-        <div id="customBox" class="bg-[#1e293b] border border-[#334155] p-2.5 rounded-xl space-y-1.5 mt-3 no-capture">
+        <div id="customBox" class="bg-[#1e293b] border border-[#334155] p-2.5 rounded-xl space-y-1.5 mt-3">
             <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">➕ Přidat novou pobočku / hospodu</h3>
             <div class="flex gap-1.5">
                 <input type="text" id="customNameInput" placeholder="Název podniku..." class="flex-1 bg-[#0f172a] border border-[#334155] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none">
@@ -158,7 +150,7 @@
         </div>
 
         <!-- Měsíční Archiv -->
-        <div id="archiveBox" class="bg-[#1e293b] border border-[#334155] p-3 rounded-xl space-y-2 mt-2 no-capture">
+        <div id="archiveBox" class="bg-[#1e293b] border border-[#334155] p-3 rounded-xl space-y-2 mt-2">
             <div class="flex justify-between items-center border-b border-[#334155] pb-1.5">
                 <h3 class="text-[10px] font-bold text-indigo-400 uppercase tracking-wide">📊 Celkový měsíční přehled</h3>
                 <button onclick="resetMonthlyArchive()" class="text-[8px] bg-red-950/40 border border-red-900 text-red-400 px-1.5 py-0.5 rounded hover:bg-red-900 hover:text-white transition">Vynulovat měsíc</button>
@@ -198,7 +190,6 @@
             onlyActiveFilter: false,
             theme: 'dark',
             formCollapsed: false,
-            isScreenshotMode: false,
             formData: { jmeno: '', spz: '', odjezd: '', prijezd: '', kmStart: '', kmEnd: '', notes: '', fuelLiters: '', fuelCost: '' },
             monthlyArchive: { tam: 0, zpet: 0, penize: 0 },
             branchDetails: {},
@@ -207,11 +198,10 @@
         };
 
         function initData() {
-            const saved = localStorage.getItem('preprava_beden_state_v14');
+            const saved = localStorage.getItem('preprava_beden_state_v15');
             if (saved) {
                 appState = JSON.parse(saved);
                 appState.onlyActiveFilter = false;
-                appState.isScreenshotMode = false;
                 
                 if (!appState.monthlyArchive) appState.monthlyArchive = { tam: 0, zpet: 0, penize: 0 };
                 if (!appState.branchDetails) appState.branchDetails = {};
@@ -276,7 +266,7 @@
         }
 
         function saveToStorage() {
-            localStorage.setItem('preprava_beden_state_v14', JSON.stringify(appState));
+            localStorage.setItem('preprava_beden_state_v15', JSON.stringify(appState));
             updateTotalsUI();
         }
 
@@ -301,7 +291,6 @@
         }
 
         function applyFormCollapse() {
-            if (appState.isScreenshotMode) return; 
             const form = document.getElementById('collapsibleForm');
             const btn = document.getElementById('collapseBtn');
             if (appState.formCollapsed) {
@@ -314,7 +303,6 @@
         }
 
         function toggleBranchDetails(el) {
-            if (appState.isScreenshotMode) return;
             const parent = el.closest('.branch-card');
             parent.classList.toggle('details-expanded');
         }
@@ -352,7 +340,7 @@
                     <div class="flex justify-between items-center gap-2">
                         <div onclick="toggleBranchDetails(this)" class="cursor-pointer flex-1 flex items-center gap-1.5 min-w-0">
                             <span class="font-bold text-white text-xs truncate hover:text-emerald-400 transition">${item.name}</span>
-                            <span class="text-[9px] text-slate-500 no-capture">ℹ️</span>
+                            <span class="text-[9px] text-slate-500">ℹ️</span>
                         </div>
                         <div class="flex items-center gap-1 font-mono text-xs">
                             <span class="text-emerald-400 bg-[#0f172a] border border-[#334155] px-1.5 py-0.5 rounded font-black">T:${item.tam}</span>
@@ -360,18 +348,18 @@
                             <input type="number" value="${item.penize || ''}" placeholder="Kč" 
                                 oninput="updateMoney('${item.name}', this.value)"
                                 class="w-14 bg-[#0f172a] border border-[#334155] rounded px-1 py-0.5 text-amber-400 font-black text-center text-xs focus:outline-none placeholder-slate-700">
-                            <button onclick="removeBranch('${item.name}')" class="text-xs text-red-400 hover:text-red-300 px-1 no-capture">✕</button>
+                            <button onclick="removeBranch('${item.name}')" class="text-xs text-red-400 hover:text-red-300 px-1">✕</button>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-4 gap-1 mt-2 no-capture">
+                    <div class="grid grid-cols-4 gap-1 mt-2">
                         <button onclick="changeVal('${item.name}', 'tam', 1)" class="bg-[#065f46] hover:bg-[#047857] text-emerald-200 py-1 rounded font-bold text-xs active:scale-95 transition">+Tam</button>
                         <button onclick="changeVal('${item.name}', 'tam', -1)" class="bg-[#334155] hover:bg-[#475569] text-slate-300 py-1 rounded font-bold text-xs active:scale-95 transition">-Tam</button>
                         <button onclick="changeVal('${item.name}', 'zpet', 1)" class="bg-[#3730a3] hover:bg-[#4338ca] text-indigo-200 py-1 rounded font-bold text-xs active:scale-95 transition">+Zpět</button>
                         <button onclick="changeVal('${item.name}', 'zpet', -1)" class="bg-[#334155] hover:bg-[#475569] text-slate-300 py-1 rounded font-bold text-xs active:scale-95 transition">-Zpět</button>
                     </div>
 
-                    <div class="details-pane no-capture mt-2 border-t border-[#334155] pt-2 space-y-1.5 text-[11px]">
+                    <div class="details-pane mt-2 border-t border-[#334155] pt-2 space-y-1.5 text-[11px]">
                         <div class="grid grid-cols-2 gap-1.5">
                             <div>
                                 <label class="block text-[9px] text-slate-400 font-bold uppercase">Telefon</label>
@@ -443,22 +431,6 @@
                 ? "py-2 px-1 bg-emerald-700 border border-emerald-500 rounded-xl text-white active:scale-95 transition text-center truncate"
                 : "py-2 px-1 bg-[#1e293b] border border-[#334155] rounded-xl text-slate-300 active:scale-95 transition text-center truncate";
             renderRows();
-        }
-
-        function toggleScreenshotMode() {
-            appState.isScreenshotMode = !appState.isScreenshotMode;
-            const body = document.body;
-            const exitBtn = document.getElementById('exitScreenshotBtn');
-
-            if (appState.isScreenshotMode) {
-                body.classList.add('screenshot-mode');
-                exitBtn.classList.remove('hidden');
-                document.getElementById('collapsibleForm').style.display = 'grid';
-            } else {
-                body.classList.remove('screenshot-mode');
-                exitBtn.classList.add('hidden');
-                applyFormCollapse();
-            }
         }
 
         function addCustomRow() {
@@ -547,14 +519,12 @@
             return text;
         }
 
-        // FUNKCE PRO WHATSAPP
         function shareViaWhatsApp() {
             const text = generateSummaryText();
             const encodedText = encodeURIComponent(text);
             window.open(`https://wa.me/?text=${encodedText}`, '_blank');
         }
 
-        // FUNKCE PRO E-MAIL
         function shareViaEmail() {
             const text = generateSummaryText();
             const datum = document.getElementById('formDatum').value || 'Dnes';
