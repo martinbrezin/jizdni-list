@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Digitální Jízdní List v13</title>
+    <title>Digitální Jízdní List v14</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1e293b">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -89,7 +89,7 @@
                     <input type="number" id="formKmEnd" placeholder="0" class="w-full bg-[#0f172a] border border-[#334155] rounded p-1.5 focus:outline-none text-white text-center placeholder-slate-700">
                 </div>
 
-                <!-- NOVÁ KOLONKA TANKOVÁNÍ -->
+                <!-- Tankování paliva -->
                 <div class="col-span-2 bg-[#0f172a] border border-[#334155] p-2 rounded-lg mt-1 space-y-1">
                     <span class="block text-[10px] font-bold text-amber-400 uppercase">⛽ Tankování paliva</span>
                     <div class="grid grid-cols-2 gap-2">
@@ -111,13 +111,23 @@
             </div>
         </div>
         
+        <!-- NOVÁ TLAČÍTKA PRO ODESLÁNÍ (WhatsApp & E-mail) -->
+        <div class="grid grid-cols-2 gap-1 text-xs font-bold no-capture">
+            <button onclick="shareViaWhatsApp()" class="py-2.5 px-2 bg-[#16a34a] hover:bg-[#15803d] text-white rounded-xl active:scale-95 transition text-center flex items-center justify-center gap-1.5 shadow-lg">
+                <span>💬 WhatsApp</span>
+            </button>
+            <button onclick="shareViaEmail()" class="py-2.5 px-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-xl active:scale-95 transition text-center flex items-center justify-center gap-1.5 shadow-lg">
+                <span>✉️ E-mail</span>
+            </button>
+        </div>
+
         <!-- Hlavní akční tlačítka -->
         <div class="grid grid-cols-3 gap-1 text-[11px] font-bold no-capture">
             <button onclick="toggleFilter()" id="filterBtn" class="py-2 px-1 bg-[#1e293b] border border-[#334155] rounded-xl text-slate-300 active:scale-95 transition text-center truncate">
                 👁️ Jen aktivní
             </button>
             <button onclick="toggleScreenshotMode()" id="screenshotBtn" class="py-2 px-1 bg-[#059669] text-white border border-[#059669] rounded-xl active:scale-95 transition text-center flex items-center justify-center gap-1">
-                📸 Režim focení
+                📸 Foto režim
             </button>
             <button onclick="archiveAndResetDay()" class="py-2 px-1 bg-[#4f46e5] border border-[#6366f1] text-indigo-100 rounded-xl active:scale-95 transition text-center flex flex-col items-center justify-center leading-tight">
                 <span>💾 Uzavřít den</span>
@@ -128,8 +138,6 @@
         <button id="exitScreenshotBtn" onclick="toggleScreenshotMode()" class="hidden fixed bottom-6 right-6 z-50 bg-[#dc2626] border border-[#ef4444] text-white text-xs font-black px-4 py-3 rounded-full shadow-2xl active:scale-95">
             ❌ Ukončit režim focení
         </button>
-
-        <p id="tipText" class="text-[9px] text-slate-500 px-1 italic no-capture">Přidej své hospody níže. Pobočky zůstanou uloženy i pro příští jízdy.</p>
 
         <!-- Seznam poboček -->
         <div id="rowsContainer" class="space-y-1"></div>
@@ -199,7 +207,7 @@
         };
 
         function initData() {
-            const saved = localStorage.getItem('preprava_beden_state_v13');
+            const saved = localStorage.getItem('preprava_beden_state_v14');
             if (saved) {
                 appState = JSON.parse(saved);
                 appState.onlyActiveFilter = false;
@@ -268,7 +276,7 @@
         }
 
         function saveToStorage() {
-            localStorage.setItem('preprava_beden_state_v13', JSON.stringify(appState));
+            localStorage.setItem('preprava_beden_state_v14', JSON.stringify(appState));
             updateTotalsUI();
         }
 
@@ -468,12 +476,91 @@
         }
 
         function removeBranch(name) {
-            if (confirm(`Smazat podník "${name}" ze seznamu?`)) {
+            if (confirm(`Smazat podnik "${name}" ze seznamu?`)) {
                 delete appState.data[name];
                 appState.order = appState.order.filter(n => n !== name);
                 saveToStorage();
                 renderRows();
             }
+        }
+
+        // GENERÁTOR TEXTOVÉHO SOUHRNU PRO SDÍLENÍ
+        function generateSummaryText() {
+            const datum = document.getElementById('formDatum').value || new Date().toLocaleDateString('cs-CZ');
+            const jmeno = appState.formData.jmeno || 'Neuvedeno';
+            const spz = appState.formData.spz || 'Neuvedeno';
+            const odjezd = appState.formData.odjezd || '--:--';
+            const prijezd = appState.formData.prijezd || '--:--';
+            
+            const start = parseInt(appState.formData.kmStart) || 0;
+            const end = parseInt(appState.formData.kmEnd) || 0;
+            const km = (end >= start && start > 0 && end > 0) ? (end - start) : 0;
+
+            let text = `📋 JÍZDNÍ LIST - ${datum}\n`;
+            text += `👤 Řidič: ${jmeno}\n`;
+            text += `🚘 SPZ: ${spz}\n`;
+            text += `🕒 Čas: ${odjezd} - ${prijezd}\n`;
+            text += `🛣️ Tachometr: ${start} -> ${end} (${km} km)\n`;
+
+            if (appState.formData.fuelLiters || appState.formData.fuelCost) {
+                text += `⛽ Tankování: ${appState.formData.fuelLiters || 0} L (${appState.formData.fuelCost || 0} Kč)\n`;
+            }
+
+            text += `\n--- AKTIVNÍ POBOČKY ---\n`;
+
+            let totalTam = 0, totalZpet = 0, totalPenize = 0;
+            let activeCount = 0;
+
+            appState.order.forEach(name => {
+                const item = appState.data[name];
+                if (!item) return;
+                
+                const tam = item.tam || 0;
+                const zpet = item.zpet || 0;
+                const penize = item.penize || 0;
+
+                if (tam > 0 || zpet > 0 || penize > 0) {
+                    activeCount++;
+                    totalTam += tam;
+                    totalZpet += zpet;
+                    totalPenize += penize;
+                    
+                    let line = `• ${item.name}: Tam ${tam} | Zpět ${zpet}`;
+                    if (penize > 0) line += ` | ${penize} Kč`;
+                    text += line + `\n`;
+                }
+            });
+
+            if (activeCount === 0) {
+                text += `(Žádný pohyb beden ani hotovosti)\n`;
+            }
+
+            text += `\n📊 CELKEM DNES:\n`;
+            text += `🟢 Tam: ${totalTam} ks\n`;
+            text += `🔵 Zpět: ${totalZpet} ks\n`;
+            text += `💰 Peníze: ${totalPenize} Kč\n`;
+
+            if (appState.formData.notes) {
+                text += `\n📝 Poznámky:\n${appState.formData.notes}\n`;
+            }
+
+            return text;
+        }
+
+        // FUNKCE PRO WHATSAPP
+        function shareViaWhatsApp() {
+            const text = generateSummaryText();
+            const encodedText = encodeURIComponent(text);
+            window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+        }
+
+        // FUNKCE PRO E-MAIL
+        function shareViaEmail() {
+            const text = generateSummaryText();
+            const datum = document.getElementById('formDatum').value || 'Dnes';
+            const subject = encodeURIComponent(`Jízdní list - ${datum} (${appState.formData.jmeno || 'Řidič'})`);
+            const body = encodeURIComponent(text);
+            window.location.href = `mailto:?subject=${subject}&body=${body}`;
         }
 
         function archiveAndResetDay() {
