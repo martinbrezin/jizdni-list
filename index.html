@@ -3,18 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Digitální Jízdní List v12</title>
+    <title>Digitální Jízdní List v13</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1e293b">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { -webkit-tap-highlight-color: transparent; }
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        .marquee-container { overflow: hidden; white-space: nowrap; display: flex; align-items: center; width: 100%; }
-        .marquee-text { display: inline-block; padding-right: 40px; animation: marquee 8s linear infinite; }
-        .screenshot-mode .marquee-text { animation: none !important; }
-        @keyframes marquee { 0% { transform: translate3d(0, 0, 0); } 100% { transform: translate3d(-50%, 0, 0); } }
-        .dragging { opacity: 0.4; background-color: #334155 !important; }
         .screenshot-mode .no-capture { display: none !important; }
         .details-pane { max-height: 0; overflow: hidden; transition: max-height 0.2s ease-out; }
         .details-expanded .details-pane { max-height: 250px; transition: max-height 0.25s ease-in; }
@@ -93,6 +88,22 @@
                     <label class="block text-slate-400 font-semibold mb-0.5 text-[10px]">Tachometr KONEC</label>
                     <input type="number" id="formKmEnd" placeholder="0" class="w-full bg-[#0f172a] border border-[#334155] rounded p-1.5 focus:outline-none text-white text-center placeholder-slate-700">
                 </div>
+
+                <!-- NOVÁ KOLONKA TANKOVÁNÍ -->
+                <div class="col-span-2 bg-[#0f172a] border border-[#334155] p-2 rounded-lg mt-1 space-y-1">
+                    <span class="block text-[10px] font-bold text-amber-400 uppercase">⛽ Tankování paliva</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-slate-400 text-[9px]">Nalito (Litry)</label>
+                            <input type="number" id="formFuelLiters" placeholder="0 L" class="w-full bg-[#1e293b] border border-[#334155] rounded p-1 text-white text-center font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 text-[9px]">Cena celkem (Kč)</label>
+                            <input type="number" id="formFuelCost" placeholder="0 Kč" class="w-full bg-[#1e293b] border border-[#334155] rounded p-1 text-amber-400 font-bold text-center font-mono">
+                        </div>
+                    </div>
+                </div>
+
                 <div class="col-span-2 text-right pt-0.5">
                     <span class="text-[10px] uppercase font-bold text-slate-400">Celkem ujeto: </span>
                     <span id="calculatedKm" class="font-mono font-black text-emerald-400 text-sm">0 km</span>
@@ -118,14 +129,14 @@
             ❌ Ukončit režim focení
         </button>
 
-        <p id="tipText" class="text-[9px] text-slate-500 px-1 italic no-capture">Ťuknutím na název pobočky zobrazíš kontakt, mapu a otevíračku.</p>
+        <p id="tipText" class="text-[9px] text-slate-500 px-1 italic no-capture">Přidej své hospody níže. Pobočky zůstanou uloženy i pro příští jízdy.</p>
 
         <!-- Seznam poboček -->
         <div id="rowsContainer" class="space-y-1"></div>
 
         <!-- Přidat novou pobočku -->
         <div id="customBox" class="bg-[#1e293b] border border-[#334155] p-2.5 rounded-xl space-y-1.5 mt-3 no-capture">
-            <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">➕ Přidat chybějící pobočku</h3>
+            <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">➕ Přidat novou pobočku / hospodu</h3>
             <div class="flex gap-1.5">
                 <input type="text" id="customNameInput" placeholder="Název podniku..." class="flex-1 bg-[#0f172a] border border-[#334155] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none">
                 <button onclick="addCustomRow()" class="bg-[#475569] text-white px-3 py-1.5 rounded-lg text-xs font-bold active:scale-95 transition">Přidat</button>
@@ -163,7 +174,6 @@
     </div>
 
     <script>
-        // Registrace Service Workeru
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 const swCode = `
@@ -176,33 +186,12 @@
             });
         }
 
-        const defaultList = [
-            "68", "Anonymous", "Barevňák", "Barracuda", "Bělehradská", "Beroun-Lapaz", 
-            "Berounský medvěd", "Bodeguita", "Boleslav", "Century", "Cisterna", "Cobra", 
-            "Divadelní kavárna", "DLOUHÁ", "EL TORO", "Farma", "Florenc", "Garuda", 
-            "Gate", "HDJ", "Horoměřice", "Host", "HUSA", "Chez nous", "IBIS", 
-            "Icatering", "ITALSKÁ", "Kamila", "Karlínská perla", "Kladno-lapaz", 
-            "Kobe", "Kozí", "Královice", "Krobian", "Linep", "Loď", "Lokál", 
-            "Masná", "MEDUSA", "Nová kantýna", "NOVOTEL", "OLIVA", "Pointa", 
-            "POKE", "PORKS", "Princ", "PŠTROS", "Racek", "Radiová", "Riegs", 
-            "Rustonka", "Shock", "Staroch", "STATENICE", "Strašecí OBOJE", "Street", 
-            "Strom", "SUCHDOL", "Sweet", "Špajz", "Štúrova", "Tkalec", "Třebešín", 
-            "U Krbu", "U Ševce", "U Tellerů", "Věž", "Vodičkova PORKS", "Zahrada"
-        ];
-
-        const initialBranchDetails = {
-            "Anonymous": { hours: "Po-Ne 16:00-02:00", phone: "+420123456789", address: "Michalská 12, Praha 1" },
-            "Barracuda": { hours: "Po-Čt 11:00-23:00, Pá-So 11:00-01:00", phone: "+420987654321", address: "Krymská 2, Praha 10" },
-            "Bodeguita": { hours: "Po-Ne 12:00-23:00", phone: "+420555666777", address: "Kaprova 5, Praha 1" },
-            "DLOUHÁ": { hours: "Po-Ne 08:00-04:00", phone: "+420222333444", address: "Dlouhá 30, Praha 1" }
-        };
-
         let appState = {
             onlyActiveFilter: false,
             theme: 'dark',
             formCollapsed: false,
             isScreenshotMode: false,
-            formData: { jmeno: '', spz: '', odjezd: '', prijezd: '', kmStart: '', kmEnd: '', notes: '' },
+            formData: { jmeno: '', spz: '', odjezd: '', prijezd: '', kmStart: '', kmEnd: '', notes: '', fuelLiters: '', fuelCost: '' },
             monthlyArchive: { tam: 0, zpet: 0, penize: 0 },
             branchDetails: {},
             order: [],
@@ -210,27 +199,22 @@
         };
 
         function initData() {
-            const saved = localStorage.getItem('preprava_beden_state_v12');
+            const saved = localStorage.getItem('preprava_beden_state_v13');
             if (saved) {
                 appState = JSON.parse(saved);
                 appState.onlyActiveFilter = false;
                 appState.isScreenshotMode = false;
                 
                 if (!appState.monthlyArchive) appState.monthlyArchive = { tam: 0, zpet: 0, penize: 0 };
-                if (!appState.branchDetails) appState.branchDetails = {...initialBranchDetails};
-                if (!appState.formData) appState.formData = { jmeno: '', spz: '', odjezd: '', prijezd: '', kmStart: '', kmEnd: '', notes: '' };
-                
-                defaultList.forEach(name => {
-                    if (!appState.data[name]) appState.data[name] = { name: name, tam: 0, zpet: 0, penize: 0, custom: false };
-                    if (!appState.order.includes(name)) appState.order.push(name);
-                });
+                if (!appState.branchDetails) appState.branchDetails = {};
+                if (!appState.formData) appState.formData = { jmeno: '', spz: '', odjezd: '', prijezd: '', kmStart: '', kmEnd: '', notes: '', fuelLiters: '', fuelCost: '' };
+                if (!appState.order) appState.order = [];
+                if (!appState.data) appState.data = {};
             } else {
-                appState.order = [...defaultList];
-                appState.branchDetails = {...initialBranchDetails};
+                appState.order = [];
+                appState.branchDetails = {};
                 appState.monthlyArchive = { tam: 0, zpet: 0, penize: 0 };
-                defaultList.forEach(name => {
-                    appState.data[name] = { name: name, tam: 0, zpet: 0, penize: 0, custom: false };
-                });
+                appState.data = {};
                 saveToStorage();
             }
             
@@ -240,12 +224,14 @@
             document.getElementById('formPrijezd').value = appState.formData.prijezd || '';
             document.getElementById('formKmStart').value = appState.formData.kmStart || '';
             document.getElementById('formKmEnd').value = appState.formData.kmEnd || '';
+            document.getElementById('formFuelLiters').value = appState.formData.fuelLiters || '';
+            document.getElementById('formFuelCost').value = appState.formData.fuelCost || '';
             document.getElementById('formNotes').value = appState.formData.notes || '';
 
             const dnes = new Date();
             document.getElementById('formDatum').value = dnes.toLocaleDateString('cs-CZ');
             
-            ['formJmeno', 'formSpz', 'formOdjezd', 'formPrijezd', 'formKmStart', 'formKmEnd', 'formNotes'].forEach(id => {
+            ['formJmeno', 'formSpz', 'formOdjezd', 'formPrijezd', 'formKmStart', 'formKmEnd', 'formFuelLiters', 'formFuelCost', 'formNotes'].forEach(id => {
                 const el = document.getElementById(id);
                 if(el) {
                     el.addEventListener('input', (e) => {
@@ -282,7 +268,7 @@
         }
 
         function saveToStorage() {
-            localStorage.setItem('preprava_beden_state_v12', JSON.stringify(appState));
+            localStorage.setItem('preprava_beden_state_v13', JSON.stringify(appState));
             updateTotalsUI();
         }
 
@@ -337,6 +323,12 @@
             const container = document.getElementById('rowsContainer');
             container.innerHTML = '';
 
+            if (appState.order.length === 0) {
+                container.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs italic">Zatím nemáš přidané žádné hospody.<br>Přidej svou první pobočku v okénku níže ➕</div>`;
+                updateTotalsUI();
+                return;
+            }
+
             appState.order.forEach(name => {
                 const item = appState.data[name];
                 if (!item) return;
@@ -360,10 +352,10 @@
                             <input type="number" value="${item.penize || ''}" placeholder="Kč" 
                                 oninput="updateMoney('${item.name}', this.value)"
                                 class="w-14 bg-[#0f172a] border border-[#334155] rounded px-1 py-0.5 text-amber-400 font-black text-center text-xs focus:outline-none placeholder-slate-700">
+                            <button onclick="removeBranch('${item.name}')" class="text-xs text-red-400 hover:text-red-300 px-1 no-capture">✕</button>
                         </div>
                     </div>
 
-                    <!-- Ovládací tlačítka -->
                     <div class="grid grid-cols-4 gap-1 mt-2 no-capture">
                         <button onclick="changeVal('${item.name}', 'tam', 1)" class="bg-[#065f46] hover:bg-[#047857] text-emerald-200 py-1 rounded font-bold text-xs active:scale-95 transition">+Tam</button>
                         <button onclick="changeVal('${item.name}', 'tam', -1)" class="bg-[#334155] hover:bg-[#475569] text-slate-300 py-1 rounded font-bold text-xs active:scale-95 transition">-Tam</button>
@@ -371,7 +363,6 @@
                         <button onclick="changeVal('${item.name}', 'zpet', -1)" class="bg-[#334155] hover:bg-[#475569] text-slate-300 py-1 rounded font-bold text-xs active:scale-95 transition">-Zpět</button>
                     </div>
 
-                    <!-- Rozbalovací panel kontaktů -->
                     <div class="details-pane no-capture mt-2 border-t border-[#334155] pt-2 space-y-1.5 text-[11px]">
                         <div class="grid grid-cols-2 gap-1.5">
                             <div>
@@ -468,12 +459,21 @@
             if (!name) return;
 
             if (!appState.data[name]) {
-                appState.data[name] = { name: name, tam: 0, zpet: 0, penize: 0, custom: true };
-                appState.order.unshift(name);
+                appState.data[name] = { name: name, tam: 0, zpet: 0, penize: 0 };
+                if (!appState.order.includes(name)) appState.order.push(name);
                 saveToStorage();
                 renderRows();
             }
             input.value = '';
+        }
+
+        function removeBranch(name) {
+            if (confirm(`Smazat podník "${name}" ze seznamu?`)) {
+                delete appState.data[name];
+                appState.order = appState.order.filter(n => n !== name);
+                saveToStorage();
+                renderRows();
+            }
         }
 
         function archiveAndResetDay() {
@@ -484,39 +484,33 @@
                 totalPenize += item.penize || 0;
             });
 
-            if (totalTam === 0 && totalZpet === 0 && totalPenize === 0) {
-                alert("Dnes nemáš zapsané žádné bedny ani hotovost k uložení.");
-                return;
-            }
-
-            if (confirm(`Chceš uzavřít dnešní den a uložit tyto hodnoty do měsíčního archivu?\n\nTam: ${totalTam} | Zpět: ${totalZpet} | Kč: ${totalPenize}\n\nPo potvrzení se dnešní jízda vynuluje.`)) {
+            if (confirm(`Chceš uzavřít dnešní den a uložit tyto hodnoty do měsíčního archivu?\n\nTam: ${totalTam} | Zpět: ${totalZpet} | Kč: ${totalPenize}\n\nHospody zůstanou uložené, jen se u nich vynulují počty pro zítřek.`)) {
                 appState.monthlyArchive.tam += totalTam;
                 appState.monthlyArchive.zpet += totalZpet;
                 appState.monthlyArchive.penize += totalPenize;
 
                 Object.keys(appState.data).forEach(key => {
-                    if (appState.data[key].custom) {
-                        delete appState.data[key];
-                    } else {
-                        appState.data[key].tam = 0;
-                        appState.data[key].zpet = 0;
-                        appState.data[key].penize = 0;
-                    }
+                    appState.data[key].tam = 0;
+                    appState.data[key].zpet = 0;
+                    appState.data[key].penize = 0;
                 });
 
                 appState.formData.odjezd = '';
                 appState.formData.prijezd = '';
                 appState.formData.kmStart = appState.formData.kmEnd;
                 appState.formData.kmEnd = '';
+                appState.formData.fuelLiters = '';
+                appState.formData.fuelCost = '';
                 appState.formData.notes = '';
 
                 document.getElementById('formOdjezd').value = '';
                 document.getElementById('formPrijezd').value = '';
                 document.getElementById('formKmStart').value = appState.formData.kmStart || '';
                 document.getElementById('formKmEnd').value = '';
+                document.getElementById('formFuelLiters').value = '';
+                document.getElementById('formFuelCost').value = '';
                 document.getElementById('formNotes').value = '';
 
-                appState.order = [...defaultList];
                 saveToStorage();
                 updateArchiveUI();
                 renderRows();
@@ -531,7 +525,6 @@
             }
         }
 
-        // Spuštění po načtení
         window.addEventListener('DOMContentLoaded', initData);
     </script>
 </body>
