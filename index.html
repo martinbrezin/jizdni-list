@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Digitální Jízdní List v15</title>
+    <title>Digitální Jízdní List v16</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1e293b">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -13,6 +13,10 @@
         .details-pane { max-height: 0; overflow: hidden; transition: max-height 0.2s ease-out; }
         .details-expanded .details-pane { max-height: 250px; transition: max-height 0.25s ease-in; }
         
+        /* Styl pro dokončenou/odškrtnutou pobočku */
+        .branch-card.completed { opacity: 0.55; background-color: #111827 !important; border-color: #1f2937 !important; }
+        .branch-card.completed .action-buttons { display: none !important; }
+
         /* Světlý motiv */
         body.light-theme { background-color: #f1f5f9; color: #0f172a; }
         body.light-theme #captureArea { background-color: #f1f5f9; }
@@ -20,6 +24,7 @@
         body.light-theme .bg-\[\#0f172a\] { background-color: #f8fafc !important; border-color: #cbd5e1 !important; }
         body.light-theme .text-white { color: #0f172a !important; }
         body.light-theme input, body.light-theme textarea { background-color: #ffffff !important; color: #0f172a !important; border-color: #cbd5e1 !important; }
+        body.light-theme .branch-card.completed { background-color: #e2e8f0 !important; border-color: #cbd5e1 !important; }
     </style>
 </head>
 <body id="appBody" class="bg-[#0f172a] text-slate-100 min-h-screen pb-36 transition-colors duration-200">
@@ -79,6 +84,13 @@
                     <label class="block text-slate-400 font-semibold mb-0.5 text-[10px]">Čas příjezdu</label>
                     <input type="time" id="formPrijezd" class="w-full bg-[#0f172a] border border-[#334155] rounded p-1.5 focus:outline-none text-white text-center">
                 </div>
+
+                <!-- PAUZA -->
+                <div class="col-span-2">
+                    <label class="block text-slate-400 font-semibold mb-0.5 text-[10px]">☕ Pauza během dne (v minutách)</label>
+                    <input type="number" id="formPause" placeholder="např. 45" class="w-full bg-[#0f172a] border border-[#334155] rounded p-1.5 focus:outline-none text-white text-center placeholder-slate-700 font-mono">
+                </div>
+
                 <div>
                     <label class="block text-slate-400 font-semibold mb-0.5 text-[10px]">Tachometr ZAČÁTEK</label>
                     <input type="number" id="formKmStart" placeholder="0" class="w-full bg-[#0f172a] border border-[#334155] rounded p-1.5 focus:outline-none text-white text-center placeholder-slate-700">
@@ -122,8 +134,8 @@
 
         <!-- Akční tlačítka -->
         <div class="grid grid-cols-2 gap-1.5 text-[11px] font-bold">
-            <button onclick="toggleFilter()" id="filterBtn" class="py-2 px-1 bg-[#1e293b] border border-[#334155] rounded-xl text-slate-300 active:scale-95 transition text-center truncate">
-                👁️ Jen aktivní
+            <button onclick="toggleHideCompleted()" id="hideCompletedBtn" class="py-2 px-1 bg-[#1e293b] border border-[#334155] rounded-xl text-slate-300 active:scale-95 transition text-center truncate">
+                👁️ Zobrazit i hotové
             </button>
             <button onclick="archiveAndResetDay()" class="py-2 px-1 bg-[#4f46e5] border border-[#6366f1] text-indigo-100 rounded-xl active:scale-95 transition text-center flex flex-col items-center justify-center leading-tight">
                 <span>💾 Uzavřít den</span>
@@ -187,10 +199,10 @@
         }
 
         let appState = {
-            onlyActiveFilter: false,
+            hideCompleted: false,
             theme: 'dark',
             formCollapsed: false,
-            formData: { jmeno: '', spz: '', odjezd: '', prijezd: '', kmStart: '', kmEnd: '', notes: '', fuelLiters: '', fuelCost: '' },
+            formData: { jmeno: '', spz: '', odjezd: '', prijezd: '', pause: '', kmStart: '', kmEnd: '', notes: '', fuelLiters: '', fuelCost: '' },
             monthlyArchive: { tam: 0, zpet: 0, penize: 0 },
             branchDetails: {},
             order: [],
@@ -198,14 +210,13 @@
         };
 
         function initData() {
-            const saved = localStorage.getItem('preprava_beden_state_v15');
+            const saved = localStorage.getItem('preprava_beden_state_v16');
             if (saved) {
                 appState = JSON.parse(saved);
-                appState.onlyActiveFilter = false;
                 
                 if (!appState.monthlyArchive) appState.monthlyArchive = { tam: 0, zpet: 0, penize: 0 };
                 if (!appState.branchDetails) appState.branchDetails = {};
-                if (!appState.formData) appState.formData = { jmeno: '', spz: '', odjezd: '', prijezd: '', kmStart: '', kmEnd: '', notes: '', fuelLiters: '', fuelCost: '' };
+                if (!appState.formData) appState.formData = { jmeno: '', spz: '', odjezd: '', prijezd: '', pause: '', kmStart: '', kmEnd: '', notes: '', fuelLiters: '', fuelCost: '' };
                 if (!appState.order) appState.order = [];
                 if (!appState.data) appState.data = {};
             } else {
@@ -220,6 +231,7 @@
             document.getElementById('formSpz').value = appState.formData.spz || '';
             document.getElementById('formOdjezd').value = appState.formData.odjezd || '';
             document.getElementById('formPrijezd').value = appState.formData.prijezd || '';
+            document.getElementById('formPause').value = appState.formData.pause || '';
             document.getElementById('formKmStart').value = appState.formData.kmStart || '';
             document.getElementById('formKmEnd').value = appState.formData.kmEnd || '';
             document.getElementById('formFuelLiters').value = appState.formData.fuelLiters || '';
@@ -229,7 +241,7 @@
             const dnes = new Date();
             document.getElementById('formDatum').value = dnes.toLocaleDateString('cs-CZ');
             
-            ['formJmeno', 'formSpz', 'formOdjezd', 'formPrijezd', 'formKmStart', 'formKmEnd', 'formFuelLiters', 'formFuelCost', 'formNotes'].forEach(id => {
+            ['formJmeno', 'formSpz', 'formOdjezd', 'formPrijezd', 'formPause', 'formKmStart', 'formKmEnd', 'formFuelLiters', 'formFuelCost', 'formNotes'].forEach(id => {
                 const el = document.getElementById(id);
                 if(el) {
                     el.addEventListener('input', (e) => {
@@ -245,6 +257,7 @@
             calculateKmDiff();
             applyThemeStyles();
             applyFormCollapse();
+            updateHideBtnUI();
             renderRows();
             updateArchiveUI();
         }
@@ -266,7 +279,7 @@
         }
 
         function saveToStorage() {
-            localStorage.setItem('preprava_beden_state_v15', JSON.stringify(appState));
+            localStorage.setItem('preprava_beden_state_v16', JSON.stringify(appState));
             updateTotalsUI();
         }
 
@@ -315,6 +328,31 @@
             saveToStorage();
         }
 
+        function toggleDone(name) {
+            if (!appState.data[name]) return;
+            appState.data[name].done = !appState.data[name].done;
+            saveToStorage();
+            renderRows();
+        }
+
+        function toggleHideCompleted() {
+            appState.hideCompleted = !appState.hideCompleted;
+            saveToStorage();
+            updateHideBtnUI();
+            renderRows();
+        }
+
+        function updateHideBtnUI() {
+            const btn = document.getElementById('hideCompletedBtn');
+            if (appState.hideCompleted) {
+                btn.textContent = "🙈 Skryto hotové";
+                btn.className = "py-2 px-1 bg-amber-700 border border-amber-500 rounded-xl text-white active:scale-95 transition text-center truncate";
+            } else {
+                btn.textContent = "👁️ Zobrazit i hotové";
+                btn.className = "py-2 px-1 bg-[#1e293b] border border-[#334155] rounded-xl text-slate-300 active:scale-95 transition text-center truncate";
+            }
+        }
+
         function renderRows() {
             const container = document.getElementById('rowsContainer');
             container.innerHTML = '';
@@ -329,18 +367,23 @@
                 const item = appState.data[name];
                 if (!item) return;
 
-                const hasActive = item.tam > 0 || item.zpet > 0 || (item.penize || 0) > 0;
-                if (appState.onlyActiveFilter && !hasActive) return;
+                const isDone = !!item.done;
+                if (appState.hideCompleted && isDone) return;
 
                 const details = appState.branchDetails[name] || { hours: '', phone: '', address: '' };
 
                 const card = document.createElement('div');
-                card.className = `branch-card bg-[#1e293b] border border-[#334155] rounded-xl p-2.5 transition-all shadow-md`;
+                card.className = `branch-card bg-[#1e293b] border border-[#334155] rounded-xl p-2.5 transition-all shadow-md ${isDone ? 'completed' : ''}`;
                 card.innerHTML = `
                     <div class="flex justify-between items-center gap-2">
-                        <div onclick="toggleBranchDetails(this)" class="cursor-pointer flex-1 flex items-center gap-1.5 min-w-0">
-                            <span class="font-bold text-white text-xs truncate hover:text-emerald-400 transition">${item.name}</span>
-                            <span class="text-[9px] text-slate-500">ℹ️</span>
+                        <div class="flex items-center gap-2 flex-1 min-w-0">
+                            <button onclick="toggleDone('${item.name}')" class="text-sm p-1 rounded-lg border ${isDone ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-[#0f172a] border-[#334155] text-slate-500'} active:scale-95 transition">
+                                ${isDone ? '✅' : '⬜'}
+                            </button>
+                            <div onclick="toggleBranchDetails(this)" class="cursor-pointer flex-1 flex items-center gap-1 min-w-0">
+                                <span class="font-bold ${isDone ? 'line-through text-slate-400' : 'text-white'} text-xs truncate">${item.name}</span>
+                                <span class="text-[9px] text-slate-500">ℹ️</span>
+                            </div>
                         </div>
                         <div class="flex items-center gap-1 font-mono text-xs">
                             <span class="text-emerald-400 bg-[#0f172a] border border-[#334155] px-1.5 py-0.5 rounded font-black">T:${item.tam}</span>
@@ -352,7 +395,7 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-4 gap-1 mt-2">
+                    <div class="action-buttons grid grid-cols-4 gap-1 mt-2">
                         <button onclick="changeVal('${item.name}', 'tam', 1)" class="bg-[#065f46] hover:bg-[#047857] text-emerald-200 py-1 rounded font-bold text-xs active:scale-95 transition">+Tam</button>
                         <button onclick="changeVal('${item.name}', 'tam', -1)" class="bg-[#334155] hover:bg-[#475569] text-slate-300 py-1 rounded font-bold text-xs active:scale-95 transition">-Tam</button>
                         <button onclick="changeVal('${item.name}', 'zpet', 1)" class="bg-[#3730a3] hover:bg-[#4338ca] text-indigo-200 py-1 rounded font-bold text-xs active:scale-95 transition">+Zpět</button>
@@ -424,22 +467,13 @@
             document.getElementById('archiveTotalPenize').textContent = appState.monthlyArchive.penize || 0;
         }
 
-        function toggleFilter() {
-            appState.onlyActiveFilter = !appState.onlyActiveFilter;
-            const btn = document.getElementById('filterBtn');
-            btn.className = appState.onlyActiveFilter 
-                ? "py-2 px-1 bg-emerald-700 border border-emerald-500 rounded-xl text-white active:scale-95 transition text-center truncate"
-                : "py-2 px-1 bg-[#1e293b] border border-[#334155] rounded-xl text-slate-300 active:scale-95 transition text-center truncate";
-            renderRows();
-        }
-
         function addCustomRow() {
             const input = document.getElementById('customNameInput');
             const name = input.value.trim();
             if (!name) return;
 
             if (!appState.data[name]) {
-                appState.data[name] = { name: name, tam: 0, zpet: 0, penize: 0 };
+                appState.data[name] = { name: name, tam: 0, zpet: 0, penize: 0, done: false };
                 if (!appState.order.includes(name)) appState.order.push(name);
                 saveToStorage();
                 renderRows();
@@ -463,6 +497,7 @@
             const spz = appState.formData.spz || 'Neuvedeno';
             const odjezd = appState.formData.odjezd || '--:--';
             const prijezd = appState.formData.prijezd || '--:--';
+            const pause = appState.formData.pause ? `${appState.formData.pause} min` : '0 min';
             
             const start = parseInt(appState.formData.kmStart) || 0;
             const end = parseInt(appState.formData.kmEnd) || 0;
@@ -471,14 +506,14 @@
             let text = `📋 JÍZDNÍ LIST - ${datum}\n`;
             text += `👤 Řidič: ${jmeno}\n`;
             text += `🚘 SPZ: ${spz}\n`;
-            text += `🕒 Čas: ${odjezd} - ${prijezd}\n`;
+            text += `🕒 Čas: ${odjezd} - ${prijezd} (Pauza: ${pause})\n`;
             text += `🛣️ Tachometr: ${start} -> ${end} (${km} km)\n`;
 
             if (appState.formData.fuelLiters || appState.formData.fuelCost) {
                 text += `⛽ Tankování: ${appState.formData.fuelLiters || 0} L (${appState.formData.fuelCost || 0} Kč)\n`;
             }
 
-            text += `\n--- AKTIVNÍ POBOČKY ---\n`;
+            text += `\n--- VYTÍŽENÉ POBOČKY ---\n`;
 
             let totalTam = 0, totalZpet = 0, totalPenize = 0;
             let activeCount = 0;
@@ -541,7 +576,7 @@
                 totalPenize += item.penize || 0;
             });
 
-            if (confirm(`Chceš uzavřít dnešní den a uložit tyto hodnoty do měsíčního archivu?\n\nTam: ${totalTam} | Zpět: ${totalZpet} | Kč: ${totalPenize}\n\nHospody zůstanou uložené, jen se u nich vynulují počty pro zítřek.`)) {
+            if (confirm(`Chceš uzavřít dnešní den a uložit tyto hodnoty do měsíčního archivu?\n\nTam: ${totalTam} | Zpět: ${totalZpet} | Kč: ${totalPenize}\n\nHospody zůstanou uložené, jen se u nich vynulují počty a odškrtnutí pro zítřek.`)) {
                 appState.monthlyArchive.tam += totalTam;
                 appState.monthlyArchive.zpet += totalZpet;
                 appState.monthlyArchive.penize += totalPenize;
@@ -550,10 +585,12 @@
                     appState.data[key].tam = 0;
                     appState.data[key].zpet = 0;
                     appState.data[key].penize = 0;
+                    appState.data[key].done = false;
                 });
 
                 appState.formData.odjezd = '';
                 appState.formData.prijezd = '';
+                appState.formData.pause = '';
                 appState.formData.kmStart = appState.formData.kmEnd;
                 appState.formData.kmEnd = '';
                 appState.formData.fuelLiters = '';
@@ -562,6 +599,7 @@
 
                 document.getElementById('formOdjezd').value = '';
                 document.getElementById('formPrijezd').value = '';
+                document.getElementById('formPause').value = '';
                 document.getElementById('formKmStart').value = appState.formData.kmStart || '';
                 document.getElementById('formKmEnd').value = '';
                 document.getElementById('formFuelLiters').value = '';
